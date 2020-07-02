@@ -7,13 +7,12 @@
 //
 
 import UIKit
-import CoreData
 
 class TaskListViewController: UITableViewController {
     
-    // MARK: - Private Properties
-    private let cellId = "cell"
-    private var tasks: [Task] = []
+    // MARK: - Public Properties
+    let cellId = "cell"
+    var tasks: [Task] = []
     
     // MARK: - Methods life cicle
     override func viewDidLoad() {
@@ -27,7 +26,6 @@ class TaskListViewController: UITableViewController {
         CoreDataManager.shared.fetchData { (taskData) in
             self.tasks = taskData
         }
-        tableView.reloadData()
     }
     
     // MARK: - Private methods
@@ -53,7 +51,8 @@ class TaskListViewController: UITableViewController {
             target: self,
             action: #selector(addTask)
         )
-
+        navigationItem.leftBarButtonItem = editButtonItem
+        
         navigationController?.navigationBar.tintColor = .white
     }
     
@@ -62,10 +61,17 @@ class TaskListViewController: UITableViewController {
     }
     
     private func showAlert(with title: String, and message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: title,
+                                      message: message,
+                                      preferredStyle: .alert)
+        
         let saveAction = UIAlertAction(title: "Save", style: .default) { (_) in
             guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
-            self.save(task)
+            CoreDataManager.shared.save(task) { (task) in
+                self.tasks.append(task)
+                let indexPath = IndexPath(row: self.tasks.count - 1, section: 0)
+                self.tableView.insertRows(at: [indexPath], with: .automatic)
+            }
         }
         
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
@@ -84,8 +90,7 @@ class TaskListViewController: UITableViewController {
             preferredStyle: .alert)
         
         let saveAction = UIAlertAction(title: "Save", style: .default) { _ in
-            guard let task = alert.textFields?.first?.text,
-                !task.isEmpty else { return }
+            guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
             
             CoreDataManager.shared.update(index: row, newTaskName: task) { (task) in
                 self.tasks[row].name = task.name
@@ -97,60 +102,13 @@ class TaskListViewController: UITableViewController {
         
         let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
         
-        alert.addTextField()
         alert.textFields?.first?.keyboardAppearance = .dark
         alert.textFields?.first?.text = tasks[row].name
+        
         alert.addAction(saveAction)
         alert.addAction(cancelAction)
+        alert.addTextField()
         
         present(alert, animated: true)
-    }
-}
-
-// MARK: - Core Data
-extension TaskListViewController {
-    
-    private func save(_ taskName: String) {
-        CoreDataManager.shared.save(taskName) { (task) in
-            self.tasks.append(task)
-        }
-        let indexPath = IndexPath(row: tasks.count - 1, section: 0)
-        tableView.insertRows(at: [indexPath], with: .automatic)
-    }
-    
-    
-}
-
-// MARK: - Table view data source
-extension TaskListViewController {
-    override func tableView(_ tableView: UITableView,
-                            numberOfRowsInSection section: Int) -> Int {
-        tasks.count
-    }
-    
-    override func tableView(_ tableView: UITableView,
-                            cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: cellId, for: indexPath)
-        let task = tasks[indexPath.row]
-        
-        cell.textLabel?.text = task.name
-        
-        return cell
-    }
-    
-    override func tableView(_ tableView: UITableView,
-                            didSelectRowAt indexPath: IndexPath) {
-        showEditAlert(at: indexPath.row)
-    }
-    
-    override func tableView(_ tableView: UITableView,
-                            commit editingStyle: UITableViewCell.EditingStyle,
-                            forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            CoreDataManager.shared.delete(index: indexPath.row)
-            self.tasks.remove(at: indexPath.row)
-            tableView.deleteRows(at: [IndexPath(row: indexPath.row, section: 0)],
-                                 with: .automatic)
-        }
     }
 }

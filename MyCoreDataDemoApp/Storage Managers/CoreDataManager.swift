@@ -39,6 +39,7 @@ class CoreDataManager {
     
     func save(_ taskName: String, completion: @escaping (Task) -> Void) {
         let viewContext = persistentContainer.viewContext
+        
         guard let entityDescription = NSEntityDescription.entity(forEntityName: "Task", in: viewContext) else { return }
         guard let task = NSManagedObject(entity: entityDescription, insertInto: viewContext) as? Task else { return }
         
@@ -78,7 +79,7 @@ class CoreDataManager {
         
         do {
             let tasks = try viewContext.fetch(fetchRequest)
-            let taskToDelete = tasks[index] as NSManagedObject
+            let taskToDelete = tasks[index]
             viewContext.delete(taskToDelete)
             
             do {
